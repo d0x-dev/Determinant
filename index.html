@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matrix Calculator — Determinant, Adjoint, Inverse, Rank, Trace, Powers & More</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --card: #11162a;
+      --muted: #9ba4b5;
+      --text: #e9edf5;
+      --accent: #6ea8fe;
+      --ring: rgba(110,168,254,0.5);
+      --bad: #ff6b6b;
+      --good: #2dd4bf;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1000px 500px at 10% -10%, #1b2140 0%, var(--bg) 60%);
+      color: var(--text);
+      min-height: 100vh; display: grid; place-items: start center;
+      padding: 24px;
+    }
+    .app { width: min(1200px, 100%); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+    h1 { font-size: clamp(1.2rem, 2.5vw, 1.8rem); margin: 0; letter-spacing: 0.2px; }
+    .card { background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+    .grid { display: grid; gap: 16px; }
+    .controls { padding: 16px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .seg {
+      display: inline-flex; background: var(--card); border-radius: 12px; padding: 4px; border: 1px solid rgba(255,255,255,0.08);
+    }
+    .seg input { display: none; }
+    .seg label {
+      padding: 8px 12px; border-radius: 10px; cursor: pointer; color: var(--muted); user-select: none; font-weight: 600; letter-spacing: .2px;
+    }
+    .seg input:checked + label { background: #1a2242; color: var(--text); outline: 2px solid var(--ring); }
+    .btn { appearance: none; border: 1px solid rgba(255,255,255,0.14); background: #1a2242; color: var(--text); padding: 10px 14px; border-radius: 12px; cursor: pointer; font-weight: 600; letter-spacing: .2px; transition: transform .05s ease; }
+    .btn:hover { filter: brightness(1.08); }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary { background: transparent; }
+    .btn.success { background: #143c36; border-color: rgba(45,212,191,.3); }
+
+    .panel { padding: 16px; }
+    .matrix-grid { display: grid; gap: 8px; }
+    .matrix-grid.cols-2 { grid-template-columns: repeat(2, minmax(70px, 1fr)); }
+    .matrix-grid.cols-3 { grid-template-columns: repeat(3, minmax(70px, 1fr)); }
+
+    .cell input {
+      width: 100%;
+      padding: 14px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12); background: rgba(8,12,30,0.8); color: var(--text);
+      text-align: center; font-size: 1rem; outline: none; transition: border-color .15s ease, box-shadow .15s ease;
+    }
+    .cell input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring); }
+
+    .outputs { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; }
+    @media (max-width: 1100px) { .outputs { grid-template-columns: 1fr; } }
+
+    .stat { display: grid; gap: 8px; }
+    .stat .label { color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+    .value { font-size: 1.4rem; font-weight: 800; }
+
+    table { border-collapse: collapse; width: 100%; }
+    .mat { width: 100%; background: var(--card); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; overflow: hidden; }
+    .mat td { border: 1px solid rgba(255,255,255,0.08); padding: 10px; text-align: center; }
+    .muted { color: var(--muted); }
+
+    .error { color: var(--bad); font-weight: 700; }
+    .note { color: var(--muted); font-size: .9rem; }
+
+    .cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    @media (max-width: 800px) { .cols { grid-template-columns: 1fr; } }
+
+    .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
+    .pill { padding: 6px 10px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.08); background: #0f1733; font-size: .9rem; }
+    .pass { color: var(--good); font-weight: 700; }
+    .fail { color: var(--bad); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="app grid">
+    <header>
+      <h1>Matrix Calculator — Determinant, Adjoint, Inverse, Rank, Trace, Powers & More</h1>
+      <div class="note">Pick size, fill entries, then Calculate.</div>
+    </header>
+
+    <section class="card grid">
+      <div class="controls">
+        <div class="seg" role="radiogroup" aria-label="Matrix size">
+          <input type="radio" name="size" id="s2" value="2" checked>
+          <label for="s2">2 × 2</label>
+          <input type="radio" name="size" id="s3" value="3">
+          <label for="s3">3 × 3</label>
+        </div>
+        <button class="btn" id="calcBtn">Calculate</button>
+        <button class="btn secondary" id="clearBtn">Clear</button>
+        <button class="btn success" id="fillSampleBtn" title="Fill with a sample matrix">Sample</button>
+        <button class="btn secondary" id="copyBtn" title="Copy results as text">Copy Results</button>
+        <button class="btn secondary" id="runTestsBtn" title="Run built-in tests">Run Tests</button>
+        <span id="status" class="muted" aria-live="polite"></span>
+      </div>
+
+      <div class="panel">
+        <div id="matrixContainer" class="matrix-grid cols-2" aria-label="Matrix input"></div>
+      </div>
+
+      <div class="panel outputs">
+        <div class="grid">
+          <div class="card panel stat">
+            <div class="label">Determinant</div>
+            <div class="value" id="detOut">—</div>
+            <div class="note" id="detNote"></div>
+          </div>
+          <div class="card panel stat">
+            <div class="label">Trace</div>
+            <div class="value" id="traceOut">—</div>
+          </div>
+          <div class="card panel stat">
+            <div class="label">Rank</div>
+            <div class="value" id="rankOut">—</div>
+            <div class="note" id="rankNote"></div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card panel stat">
+            <div class="label">Adjoint (Adjugate)</div>
+            <div class="mat" id="adjOut">—</div>
+            <div class="note">Adjoint = transpose of the cofactor matrix.</div>
+          </div>
+          <div class="card panel stat">
+            <div class="label">Cofactor Matrix</div>
+            <div class="mat" id="cofOut">—</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card panel stat">
+            <div class="label">Inverse (if det ≠ 0)</div>
+            <div class="mat" id="invOut">—</div>
+            <div class="note" id="invNote"></div>
+          </div>
+          <div class="card panel stat">
+            <div class="label">Transpose</div>
+            <div class="mat" id="trOut">—</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="card panel stat">
+            <div class="label">Matrix Squared (A²)</div>
+            <div class="mat" id="sqOut">—</div>
+          </div>
+          <div class="card panel stat">
+            <div class="label">Matrix Cubed (A³)</div>
+            <div class="mat" id="cubeOut">—</div>
+          </div>
+        </div>
+
+        <div class="card panel stat">
+          <div class="label">Characteristic Polynomial</div>
+          <div id="charOut" class="pill">—</div>
+          <div class="note" id="charNote"></div>
+        </div>
+
+        <div class="card panel stat">
+          <div class="label">Diagnostics (Built-in Tests)</div>
+          <div id="testOut" class="mat">—</div>
+          <div class="note">Verifies core functions with known matrices.</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const matrixContainer = document.getElementById('matrixContainer');
+    const detOut = document.getElementById('detOut');
+    const adjOut = document.getElementById('adjOut');
+    const cofOut = document.getElementById('cofOut');
+    const invOut = document.getElementById('invOut');
+    const trOut = document.getElementById('trOut');
+    const traceOut = document.getElementById('traceOut');
+    const rankOut = document.getElementById('rankOut');
+    const charOut = document.getElementById('charOut');
+    const sqOut = document.getElementById('sqOut');
+    const cubeOut = document.getElementById('cubeOut');
+    const testOut = document.getElementById('testOut');
+
+    const detNote = document.getElementById('detNote');
+    const rankNote = document.getElementById('rankNote');
+    const invNote = document.getElementById('invNote');
+    const charNote = document.getElementById('charNote');
+    const status = document.getElementById('status');
+
+    function roundIfInt(x) {
+      const r = Math.round(x);
+      return Math.abs(x - r) < 1e-9 ? r : +x.toFixed(10).replace(/0+$/,'').replace(/\.$/,'');
+    }
+
+    function buildGrid(n) {
+      matrixContainer.innerHTML = '';
+      matrixContainer.classList.toggle('cols-2', n === 2);
+      matrixContainer.classList.toggle('cols-3', n === 3);
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const wrap = document.createElement('div');
+          wrap.className = 'cell';
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.inputMode = 'decimal';
+          input.placeholder = `a${i+1}${j+1}`;
+          input.id = `a_${i}_${j}`;
+          wrap.appendChild(input);
+          matrixContainer.appendChild(wrap);
+        }
+      }
+    }
+
+    function getSize() {
+      return document.getElementById('s3').checked ? 3 : 2;
+    }
+
+    function readMatrix(n) {
+      const A = Array.from({ length: n }, () => Array(n).fill(0));
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const el = document.getElementById(`a_${i}_${j}`);
+          if (!el || el.value.trim() === '') {
+            throw new Error('Please fill all entries.');
+          }
+          const v = Number(el.value);
+          if (!Number.isFinite(v)) throw new Error('Invalid number encountered.');
+          A[i][j] = v;
+        }
+      }
+      return A;
+    }
+
+    // Basic helpers
+    const clone = A => A.map(r => r.slice());
+    const transpose = A => A[0].map((_,j)=>A.map(r=>r[j]));
+    const mul = (A,B)=>{
+      const n = A.length, m = B[0].length, k = B.length;
+      const C = Array.from({length:n},()=>Array(m).fill(0));
+      for(let i=0;i<n;i++) for(let j=0;j<m;j++) {
+        let s=0; for(let t=0;t<k;t++) s+=A[i][t]*B[t][j]; C[i][j]=s;
+      } return C;
+    }
+
+    // Determinant 2x2 / 3x3
+    function det2(A){ const a=A[0][0],b=A[0][1],c=A[1][0],d=A[1][1]; return a*d-b*c; }
+    function det3(A){ const a=A[0][0],b=A[0][1],c=A[0][2], d=A[1][0],e=A[1][1],f=A[1][2], g=A[2][0],h=A[2][1],i=A[2][2]; return a*(e*i-f*h)-b*(d*i-f*g)+c*(d*h-e*g); }
+    const det = A => A.length===2?det2(A):det3(A);
+
+    // Minors & cofactors
+    function minor(A,r,c){ const n=A.length; const M=[]; for(let i=0;i<n;i++){ if(i===r) continue; const row=[]; for(let j=0;j<n;j++){ if(j===c) continue; row.push(A[i][j]); } M.push(row);} return M; }
+    function cofactorMatrix2(A){ const a=A[0][0],b=A[0][1],c=A[1][0],d=A[1][1]; return [[ d, -c], [-b,  a]].map(row=>row.map(roundIfInt)); }
+    function cofactorMatrix3(A){ const C=Array.from({length:3},()=>Array(3).fill(0)); for(let i=0;i<3;i++){ for(let j=0;j<3;j++){ const m=minor(A,i,j); const cof=((i+j)%2===0?1:-1)*(m.length===1?m[0][0]:det(m)); C[i][j]=roundIfInt(cof); } } return C; }
+    const cofactorMatrix = A => A.length===2?cofactorMatrix2(A):cofactorMatrix3(A);
+    const adjugate = A => transpose(cofactorMatrix(A));
+
+    // Inverse via adj/det (works for 2x2,3x3)
+    function inverse(A){ const D=det(A); if(Math.abs(D)<1e-12) return null; const adj=adjugate(A); const Inv=adj.map(r=>r.map(v=>roundIfInt(v/D))); return Inv; }
+
+    // Trace, Rank
+    const trace = A => A.reduce((s,row,i)=>s+row[i],0);
+
+    function rrefRank(A){
+      // Gaussian elimination with partial pivoting; returns rank
+      const n=A.length, m=A[0].length; const M=clone(A); let rank=0; let r=0; const eps=1e-10;
+      for(let c=0;c<m && r<n;c++){
+        let piv=r; for(let i=r+1;i<n;i++) if(Math.abs(M[i][c])>Math.abs(M[piv][c])) piv=i;
+        if(Math.abs(M[piv][c])<eps) continue;
+        if(piv!==r){ const tmp=M[r]; M[r]=M[piv]; M[piv]=tmp; }
+        const pv=M[r][c]; for(let j=c;j<m;j++) M[r][j]/=pv;
+        for(let i=0;i<n;i++) if(i!==r){ const f=M[i][c]; if(Math.abs(f)>eps){ for(let j=c;j<m;j++) M[i][j]-=f*M[r][j]; } }
+        r++; rank++;
+      }
+      return {rank, rref:M};
+    }
+
+    // Characteristic polynomial coefficients
+    function charPolyCoeffs(A){
+      const n=A.length; const tr = trace(A);
+      if(n===2){
+        const d = det2(A);
+        return [1, -tr, d]; // λ^2 − (tr A)λ + det(A)
+      } else {
+        const A2 = mul(A,A);
+        const trA2 = trace(A2);
+        const D = det3(A);
+        const c2 = -tr;
+        const c1 = 0.5*((tr*tr) - trA2);
+        const c0 = -D;
+        return [1, c2, c1, c0]; // λ^3 − (tr A)λ^2 + ½((tr A)^2 − tr(A^2))λ − det(A)
+      }
+    }
+
+    function renderMatrix(M) {
+      if (!M) return '<div class="error">Not available.</div>';
+      if (typeof M === 'string') return `<div class="error">${M}</div>`;
+      const rows = M.map(row => `<tr>${row.map(v => `<td>${v}</td>`).join('')}</tr>`).join('');
+      return `<table><tbody>${rows}</tbody></table>`;
+    }
+
+    function polyToText(coeffs){
+      const n = coeffs.length-1;
+      const parts = [];
+      coeffs.forEach((c, idx)=>{
+        const p = n-idx;
+        if(Math.abs(c) < 1e-12) return;
+        const sign = (c<0? ' − ' : (parts.length? ' + ' : ''));
+        const abs = Math.abs(c);
+        const coeff = (Math.abs(abs-1)<1e-12 && p>0)? '' : roundIfInt(abs);
+        const term = p===0 ? `${roundIfInt(abs)}` : (p===1 ? `${coeff}λ` : `${coeff}λ^${p}`);
+        parts.push((parts.length? sign.trim(): (c<0? '−':'')) + term);
+      });
+      return parts.length? parts.join(' ') : '0';
+    }
+
+    function calculate() {
+      [detOut, traceOut, rankOut, charOut].forEach(el=>el.textContent='—');
+      [adjOut, cofOut, invOut, trOut, sqOut, cubeOut].forEach(el=>el.innerHTML='—');
+      detNote.textContent = rankNote.textContent = invNote.textContent = charNote.textContent = '';
+      status.textContent = '';
+      try {
+        const n = getSize();
+        const A = readMatrix(n);
+
+        const D = det(A);
+        const Tr = trace(A);
+        const Cof = cofactorMatrix(A);
+        const Adj = transpose(Cof);
+        const Inv = inverse(A);
+        const R = rrefRank(A).rank;
+        const T = transpose(A);
+        const A2 = mul(A, A).map(r=>r.map(roundIfInt));
+        const A3 = mul(A2, A).map(r=>r.map(roundIfInt));
+
+        detOut.textContent = String(roundIfInt(D));
+        detNote.textContent = 'Exact from closed-form.';
+        traceOut.textContent = String(roundIfInt(Tr));
+        rankOut.textContent = String(R);
+        rankNote.textContent = R===n? 'Full rank.' : `Deficient by ${n-R}.`;
+        adjOut.innerHTML = renderMatrix(Adj);
+        cofOut.innerHTML = renderMatrix(Cof);
+        invOut.innerHTML = Inv? renderMatrix(Inv) : '<div class="pill">Not invertible (det = 0)</div>';
+        invNote.textContent = Inv? 'Inverse = adj(A) / det(A).' : '';
+        trOut.innerHTML = renderMatrix(T);
+        sqOut.innerHTML = renderMatrix(A2);
+        cubeOut.innerHTML = renderMatrix(A3);
+
+        const coeffs = charPolyCoeffs(A).map(roundIfInt);
+        charOut.textContent = polyToText(coeffs) + ' = 0';
+        charNote.textContent = n===2 ? 'For 2×2: λ² − (tr A)λ + det(A) = 0.' : 'For 3×3: λ³ − (tr A)λ² + ½((tr A)² − tr(A²))λ − det(A) = 0.';
+
+        status.textContent = 'Done.';
+      } catch (err) {
+        status.textContent = '';
+        detOut.textContent = '—';
+        adjOut.innerHTML = renderMatrix(err.message || String(err));
+      }
+    }
+
+    function clearAll() {
+      Array.from(matrixContainer.querySelectorAll('input')).forEach(i => i.value = '');
+      [detOut, traceOut, rankOut, charOut].forEach(el=>el.textContent='—');
+      [adjOut, cofOut, invOut, trOut, sqOut, cubeOut].forEach(el=>el.innerHTML='—');
+      detNote.textContent = rankNote.textContent = invNote.textContent = charNote.textContent = '';
+      status.textContent = '';
+    }
+
+    function fillSample() {
+      const n = getSize();
+      const samples = {
+        2: [[1, 2], [3, 4]],
+        3: [[1, 1, 1], [1, 2, -3], [2, -1, 3]]
+      };
+      const A = samples[n];
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          document.getElementById(`a_${i}_${j}`).value = A[i][j];
+        }
+      }
+      status.textContent = 'Sample filled.';
+    }
+
+    async function copyResults(){
+      const text = `Determinant: ${detOut.textContent}\nTrace: ${traceOut.textContent}\nRank: ${rankOut.textContent}\n\nAdjoint:\n${adjOut.innerText}\n\nCofactor Matrix:\n${cofOut.innerText}\n\nInverse:\n${invOut.innerText}\n\nTranspose:\n${trOut.innerText}\n\nA²:\n${sqOut.innerText}\n\nA³:\n${cubeOut.innerText}\n\nCharacteristic Polynomial:\n${charOut.textContent}`;
+
+      // Try modern Clipboard API first (requires user gesture + secure context + allowed permissions)
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+          status.textContent = 'Copied!';
+          setTimeout(()=>status.textContent='',1500);
+          return;
+        }
+        throw new Error('Clipboard API unavailable');
+      } catch (e) {
+        // Fallback 1: hidden textarea + execCommand('copy')
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.setAttribute('readonly','');
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          const ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          if (ok) {
+            status.textContent = 'Copied (fallback)';
+            setTimeout(()=>status.textContent='',1500);
+            return;
+          }
+          throw new Error('execCommand copy failed');
+        } catch (e2) {
+          // Fallback 2: download a .txt file so result is still retrievable in restricted sandboxes
+          try {
+            const blob = new Blob([text], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'matrix-results.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            status.textContent = 'Clipboard blocked — downloaded matrix-results.txt instead.';
+            setTimeout(()=>status.textContent='',2500);
+          } catch (e3) {
+            status.textContent = 'Copy failed. Please select and copy manually.';
+          }
+        }
+      }
+    }
+
+    function runTests(){
+      const lines = [];
+      const pass = (name) => `<li class=\"pass\">✓ ${name}</li>`;
+      const fail = (name, got, exp) => `<li class=\"fail\">✗ ${name} — got ${got}, expected ${exp}</li>`;
+      const eqNum = (a,b,eps=1e-9)=>Math.abs(a-b)<=eps;
+      const eqMat = (A,B,eps=1e-9)=>A.length===B.length && A.every((r,i)=>r.length===B[i].length && r.every((v,j)=>eqNum(v,B[i][j],eps)));
+
+      // Test 1: 2×2 sample
+      const A2 = [[1,2],[3,4]];
+      const detA2 = det2(A2);
+      if(eqNum(detA2,-2)) lines.push(pass('2×2 det'));
+      else lines.push(fail('2×2 det', detA2, -2));
+      const adjA2 = [[4,-3],[-2,1]];
+      if(eqMat(adjugate(A2), adjA2)) lines.push(pass('2×2 adj'));
+      else lines.push(fail('2×2 adj', JSON.stringify(adjugate(A2)), JSON.stringify(adjA2)));
+      const A2sq = mul(A2,A2);
+      if(eqMat(A2sq, [[7,10],[15,22]])) lines.push(pass('2×2 A²'));
+      else lines.push(fail('2×2 A²', JSON.stringify(A2sq), '[[7,10],[15,22]]'));
+      const A2cube = mul(A2sq,A2);
+      if(eqMat(A2cube, [[37,54],[81,118]])) lines.push(pass('2×2 A³'));
+      else lines.push(fail('2×2 A³', JSON.stringify(A2cube), '[[37,54],[81,118]]'));
+
+      // Test 2: 3×3 sample from UI
+      const A3 = [[1,1,1],[1,2,-3],[2,-1,3]];
+      const detA3 = det3(A3);
+      if(eqNum(detA3,-11)) lines.push(pass('3×3 det'));
+      else lines.push(fail('3×3 det', detA3, -11));
+      const adjA3exp = [[3,-4,-5],[-9,1,4],[-5,3,1]];
+      if(eqMat(adjugate(A3), adjA3exp)) lines.push(pass('3×3 adj'));
+      else lines.push(fail('3×3 adj', JSON.stringify(adjugate(A3)), JSON.stringify(adjA3exp)));
+
+      testOut.innerHTML = `<ul style=\"margin:0; padding-left:18px;\">${lines.join('')}</ul>`;
+    }
+
+    // Wire up events
+    document.getElementById('calcBtn').addEventListener('click', calculate);
+    document.getElementById('clearBtn').addEventListener('click', clearAll);
+    document.getElementById('fillSampleBtn').addEventListener('click', fillSample);
+    document.getElementById('copyBtn').addEventListener('click', copyResults);
+    document.getElementById('runTestsBtn').addEventListener('click', runTests);
+    document.getElementById('s2').addEventListener('change', () => { buildGrid(2); clearAll(); });
+    document.getElementById('s3').addEventListener('change', () => { buildGrid(3); clearAll(); });
+
+    // init
+    buildGrid(2);
+  </script>
+</body>
+</html>
